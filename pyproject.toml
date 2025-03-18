@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unipi"
+version = "0.1.0"
+description = "PLC programmeren in Python op een Unipi 1.1"
+authors = [{ name = "Tom Christiaens", email = "mailbox.tom.chr@gmail.com" }]
+dependencies = [
+    "python-decouple",
+    "requests"
+]
+
+[tool.setuptools]
+packages = ["unipi"]
