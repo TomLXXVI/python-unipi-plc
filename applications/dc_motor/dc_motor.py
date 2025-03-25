@@ -2,8 +2,8 @@ import os
 from unipi import AbstractPLC, EmailNotification, MemoryVariable
 import unipi.logging
 from unipi.exceptions import EmergencyException
-from unipi.timers import Timer
-from unipi.switches import ToggleSoftSwitch
+from unipi.timers import SingleScanTimer
+from unipi.switches import ToggleSwitch
 
 
 class DcMotorPLC(AbstractPLC):
@@ -33,7 +33,7 @@ class DcMotorPLC(AbstractPLC):
         # is implemented here as a soft switch which is linked to the state of 
         # the actual pushbutton. The E-stopswitch will be toggled on each 
         # raising edge of the pushbutton.
-        self.E_stop_switch = ToggleSoftSwitch(E_stop_btn)
+        self.E_stop_switch = ToggleSwitch(E_stop_btn)
         
         # Flags
         self.init_flag = True
@@ -102,10 +102,11 @@ class DcMotorPLC(AbstractPLC):
         PLC scanning loop.
         """
         # Initiate the PLC scanning cycle (only at startup):
-        if self.init_flag is True:
-            self._initiate_control()
+        if self.init_flag is True: self._initiate_control()
         
-        # On each PLC scan, check the current state of the E-stop switch:
+        # On each PLC scan, update the state of the E-stop switch and check the 
+        # current state of the E-stop switch:
+        self.E_stop_switch.update()
         if self.E_stop_switch.curr_state:
             raise EmergencyException
 
@@ -130,21 +131,29 @@ class DcMotorPLC(AbstractPLC):
         immediately turned OFF when the E-stop switch has been activated. 
         A flashing light gives a visible warning until the E-stop switch has
         been deactivated.
+        
+        Notes
+        -----
+        When an `EmergencyException` is raised from the normal PLC control 
+        routine, the PLC scanning cycle (a while-loop) is interrupted by the
+        emergency routine. If inside the emergency routine a sequential control
+        procedure is needed, we need to implement its own PLC scanning cycle.
         """
         self.logger.info('motor emergency stop')
         self.motor.update(0)   # turn motor OFF
         self.lamp.update(1)    # turn flashlight ON
-        timer_ON = Timer(2)    # timer for the time the flashlight is ON
-        timer_OFF = Timer(2)   # timer for the time the flashlight is OFF
+        timer_ON = SingleScanTimer(2)    # timer for the time the flashlight is ON
+        timer_OFF = SingleScanTimer(2)   # timer for the time the flashlight is OFF
         emergency_flag = True  
         while emergency_flag:
             # Read the state of all physical inputs to the input registries of 
-            # the PLC.
+            # the PLC and update the state of the E-stop soft-switch.
             self.read_inputs()
+            self.E_stop_switch.update()
             # Control logic:
             # Note: The control logic reads from the input registries and
-            # writes to the output registries. It never reads a physical input 
-            # directly or writes directly to a physical output. 
+            # writes to the running registries. It never reads a physical input 
+            # directly or writes directly to a physical running. 
             if self.lamp.curr_state == 1 and timer_ON.has_elapsed:
                 self.lamp.update(0)
             if self.lamp.curr_state == 0 and timer_OFF.has_elapsed:
@@ -152,7 +161,7 @@ class DcMotorPLC(AbstractPLC):
             if not self.E_stop_switch.curr_state:
                 emergency_flag = False
                 self.lamp.update(0)
-            # Write the state of all outputs from the output registries of the
+            # Write the state of all outputs from the running registries of the
             # PLC to the physical outputs of the PLC.
             self.write_outputs()
 

@@ -13,11 +13,12 @@ class ValveController(AbstractPLC):
         self,
         ip_address: str = "localhost",
         port: int = 8080,
+        device: str | int = 1,
         eml_notification: EmailNotification | None = None,
         update_interval: int = 5,
         voltage_range: tuple[int, int] = (0, 10)
-    ):
-        super().__init__(ip_address, port, eml_notification)
+    ) -> None:
+        super().__init__(ip_address, port, device, eml_notification)
 
         self.add_analog_output(pin=1, label="valve_position")
 
@@ -34,15 +35,15 @@ class ValveController(AbstractPLC):
             V = round(random.uniform(self.V_low, self.V_high), 1)
             self.ao_state_registry["valve_position"].curr_state = V
             valve_pos_percent = int((10 - self.ao_state_registry["valve_position"].curr_state) * 10.0)
-            # Note: a value of 10 corresponds with 0 V on the analog output,
-            # while a value of 0 corresponds with 10 V on the analog output.
+            # Note: a value of 10 corresponds with 0 V on the analog running,
+            # while a value of 0 corresponds with 10 V on the analog running.
             self.logger.info(f"current valve position = {valve_pos_percent} %")
 
     def control_routine(self):
         self.set_valve_position()
 
     def exit_routine(self):
-        self.ao_state_registry["valve_position"].curr_state = self.V_high  # V_high results in 0 V on the analog output
+        self.ao_state_registry["valve_position"].curr_state = self.V_high  # V_high results in 0 V on the analog running
         now = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         self.logger.info('exit valve controller')
         if self.eml_notification: self.eml_notification.send(f"[{now}] exit program")

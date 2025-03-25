@@ -84,11 +84,11 @@ class MyPLC(AbstractPLC):
 
     def _reset_lamps(self) -> None:
         """At the end of one sequence, each lamp has been turned OFF one time.
-        So, each lamp output has a current state of 0, but a previous state of 1.
+        So, each lamp running has a current state of 0, but a previous state of 1.
         When a new sequence is repeated, it will look like each lamp has been
         just turned OFF during the previous scan, while actually they were
         already turned OFF earlier. Therefore, the previous state of each lamp
-        output must be reset to 0 before a new sequence begins.
+        running must be reset to 0 before a new sequence begins.
         """
         self.l1.update(0)
         self.l2.update(0)

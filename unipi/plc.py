@@ -17,19 +17,23 @@ class MemoryVariable:
     
     Attributes
     ----------
-    curr_state: int | float | None
+    curr_state: bool | int | float
         Current state of the variable.
-    prev_state: int | float | None
-        Previous state of the variable, i.e., its state from the previous PLC
+    prev_state: bool | int | float
+        Previous state of the variable, i.e., its state in the previous PLC
         scan cycle.
+    single_bit: bool
+        Indicates that the memory variable should be treated as a single bit 
+        variable (its value can be either 0 or 1). Default value is `True`.
     
     Methods
     -------
     update: 
         Changes the current state of the variable.
     """
-    curr_state: int | float | None = None
-    prev_state: int | float | None = None
+    curr_state: bool | int | float = 0
+    prev_state: bool | int | float = 0
+    single_bit: bool = True
 
     def update(self, value: int | float) -> None:
         """Updates the current state of the variable with parameter `value`.
@@ -38,6 +42,59 @@ class MemoryVariable:
         """
         self.prev_state = self.curr_state
         self.curr_state = value
+    
+    @property
+    def active(self) -> bool:
+        """Returns `True` if the current state is `True`, else returns `False`."""
+        if self.curr_state:
+            return True
+        return False
+    
+    def activate(self) -> None:
+        """Sets the current state to `True` (1). Only for single bit variables 
+        (attribute `is_binary` must be `True`; if `is_binary` is `False`, a
+        `ValueError` exception is raised).
+        """
+        if self.single_bit:
+            self.update(1)
+        else:
+            raise ValueError("Memory variable is not single bit.")
+
+    def deactivate(self) -> None:
+        """Sets the current state to `False` (0). Only for single bit variables 
+        (attribute `is_binary` must be `True`; if `is_binary` is `False`, a
+        `ValueError` exception is raised).
+        """
+        if self.single_bit:
+            self.update(0)
+        else:
+            raise ValueError("Memory variable is not single bit.")
+    
+    @property
+    def raising_edge(self) -> bool:
+        """Returns `True` if `prev_state` is 0 and `curr_state` is 1. Only for 
+        single bit variables (attribute `is_binary` must be `True`; if `is_binary` 
+        is `False`, a `ValueError` exception is raised).
+        """
+        if self.single_bit:
+            if self.curr_state and not self.prev_state:
+                return True
+            return False
+        else:
+            raise ValueError("Memory variable is not single bit.")
+
+    @property
+    def falling_edge(self) -> bool:
+        """Returns `True` if `prev_state` is 1 and `curr_state` is 0. Only for 
+        single bit variables (attribute `is_binary` must be `True`; if `is_binary` 
+        is `False`, a `ValueError` exception is raised).
+        """
+        if self.single_bit:
+            if self.prev_state and not self.curr_state:
+                return True
+            return False
+        else:
+            raise ValueError("Memory variable is not single bit.")
 
 
 class AbstractPLC(ABC):
@@ -205,7 +262,7 @@ class AbstractPLC(ABC):
         label: str,
         init_value: float = 0.0
     ) -> MemoryVariable:
-        """Adds an analog output to the PLC application.
+        """Adds an analog running to the PLC application.
         
         Parameters
         ----------
@@ -213,7 +270,7 @@ class AbstractPLC(ABC):
         
         Returns
         -------
-        The memory variable of the analog output in the analog output memory
+        The memory variable of the analog running in the analog running memory
         registry.
         """
         ao = AnalogOutput(pin, label)
@@ -257,30 +314,30 @@ class AbstractPLC(ABC):
             raise ConfigurationError(f"unknown analog input `{label}`")
 
     def do_write(self, label: str, value: int) -> None:
-        """Writes the given value (int) to the digital output with the given
+        """Writes the given value (int) to the digital running with the given
         label.
 
-        Raises a `ConfigurationError` exception if the digital output with the
+        Raises a `ConfigurationError` exception if the digital running with the
         given label has not been added to the PLC-application before.
         """
         do = self._digital_outputs.get(label)
         if do:
             do.write(value)
         else:
-            raise ConfigurationError(f"unknown digital output `{label}`")
+            raise ConfigurationError(f"unknown digital running `{label}`")
 
     def ao_write(self, label: str, value: float) -> None:
-        """Writes the given value (float) to the analog output with the given
+        """Writes the given value (float) to the analog running with the given
         label.
 
-        Raises a `ConfigurationError` exception if the analog output with the
+        Raises a `ConfigurationError` exception if the analog running with the
         given label has not been added to the PLC-application before.
         """
         ao = self._analog_outputs.get(label)
         if ao:
             ao.write(value)
         else:
-            raise ConfigurationError(f"unknown analog output `{label}`")
+            raise ConfigurationError(f"unknown analog running `{label}`")
 
     def read_inputs(self) -> None:
         """Reads all the physical digital and analog inputs defined in the PLC
@@ -300,7 +357,7 @@ class AbstractPLC(ABC):
 
     def write_outputs(self) -> None:
         """Writes all the current states present in the digital and analog
-        output registries to the corresponding physical digital and analog
+        running registries to the corresponding physical digital and analog
         outputs.
 
         Raises an `InternalCommunicationError` exception when a write operation

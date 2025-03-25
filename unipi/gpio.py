@@ -5,7 +5,7 @@ from .exceptions import InternalCommunicationError
 
 class GPIO(ABC):
     """
-    Represents a single (general purpose) input or output on the Unipi 1.1
+    Represents a single (general purpose) input or running on the Unipi 1.1
     PLC-board. Class `GPIO` is an abstract class from which concrete types of
     inputs and outputs are derived (see below).
 
@@ -43,7 +43,7 @@ class GPIO(ABC):
             Sequence number of pin (based on `count` parameter in file 
             `/etc/evok/hw_definitions/UNIPI11.yaml`).
         label:
-            Meaningful name that clarifies the purpose of the input or output
+            Meaningful name that clarifies the purpose of the input or running
             pin.
         normal_closed:
             Indicates if the contact is normally closed in its resting state.
@@ -62,7 +62,7 @@ class GPIO(ABC):
         ...
 
     def read(self) -> int | float:
-        """Reads the current state of the input or output. If no response is
+        """Reads the current state of the input or running. If no response is
         returned before `timeout` has elapsed, an `InternalCommunicationError` 
         exception is raised.
         """
@@ -80,7 +80,7 @@ class GPIO(ABC):
             return d["value"]
 
     def write(self, value: int | float):
-        """Writes the given value to the output. The value type can be an
+        """Writes the given value to the running. The value type can be an
         integer or a float. If no response is returned before `timeout` has
         elapsed, an exception `InterCommunicationError` is raised.
         """
@@ -106,7 +106,7 @@ class DigitalInput(GPIO):
 
 class DigitalOutput(GPIO):
     """
-    Represents a digital output.
+    Represents a digital running.
     """
     def _set_url(self) -> str:
         
@@ -123,7 +123,7 @@ class AnalogInput(GPIO):
 
 class AnalogOutput(GPIO):
     """
-    Represents an analog output.
+    Represents an analog running.
     """
     def _set_url(self) -> str:
         return self.base_url + f"ao/{self.pin_ID}"
